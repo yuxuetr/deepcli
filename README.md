@@ -22,7 +22,7 @@ DeepCLI is a command-line tool that allows you to interact with DeepSeek's large
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/deepcli.git
+git clone https://github.com/yuxuetr/deepcli.git
 cd deepcli
 
 # Build the project
