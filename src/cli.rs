@@ -1,4 +1,4 @@
-use clap::{Arg, Command, builder::ValueParser};
+use clap::{Arg, ArgAction, Command, builder::ValueParser};
 
 pub fn build_cli() -> Command {
   Command::new("deepcli")
@@ -9,7 +9,7 @@ pub fn build_cli() -> Command {
         .short('m')
         .value_name("MODEL")
         .help("Model to use: r1 (deepseek-reasoner) or chat (deepseek-chat)")
-        .default_value("chat"),
+        .default_value("r1"),
     )
     .arg(
       Arg::new("temperature")
@@ -44,9 +44,16 @@ pub fn build_cli() -> Command {
         .action(clap::ArgAction::SetTrue),
     )
     .arg(
+      Arg::new("interactive")
+        .long("interactive")
+        .short('i')
+        .help("启动交互式聊天模式")
+        .action(ArgAction::SetTrue),
+    )
+    .arg(
       Arg::new("query")
-        .help("Query to send to the model")
-        .required(true)
+        .help("Query to send to the model (在交互模式下可选)")
+        .required(false)
         .index(1),
     )
 }
@@ -62,7 +69,7 @@ pub fn validate_temperature(temp: f32) -> Result<f32, String> {
 
 pub fn map_model(model: &str) -> Result<String, String> {
   match model {
-    "r1" => Ok("deepseek-reasoner".to_string()),
+    "r1" => Ok("deepseek-r1".to_string()),
     "chat" => Ok("deepseek-chat".to_string()),
     _ => Err("Invalid model. Use 'r1' or 'chat'.".to_string()),
   }
@@ -82,9 +89,10 @@ mod tests {
   fn test_cli_arguments() {
     // Test default values
     let matches = build_cli().get_matches_from(vec!["deepcli", "hello"]);
-    assert_eq!(matches.get_one::<String>("model").unwrap(), "chat");
+    assert_eq!(matches.get_one::<String>("model").unwrap(), "r1");
     assert_eq!(matches.get_one::<String>("query").unwrap(), "hello");
     assert!(!matches.get_flag("json"));
+    assert!(!matches.get_flag("interactive"));
 
     // Test model selection
     let matches = build_cli().get_matches_from(vec!["deepcli", "-m", "r1", "hello"]);
@@ -101,6 +109,10 @@ mod tests {
     // Test JSON flag
     let matches = build_cli().get_matches_from(vec!["deepcli", "--json", "hello"]);
     assert!(matches.get_flag("json"));
+
+    // Test interactive flag
+    let matches = build_cli().get_matches_from(vec!["deepcli", "-i"]);
+    assert!(matches.get_flag("interactive"));
   }
 
   #[test]
@@ -117,7 +129,7 @@ mod tests {
 
   #[test]
   fn test_model_mapping() {
-    assert_eq!(map_model("r1").unwrap(), "deepseek-reasoner");
+    assert_eq!(map_model("r1").unwrap(), "deepseek-r1");
     assert_eq!(map_model("chat").unwrap(), "deepseek-chat");
     assert!(map_model("invalid").is_err());
   }
@@ -130,7 +142,12 @@ mod tests {
 
   #[test]
   fn test_missing_query() {
+    // 在非交互模式下，query是可选的（因为index(1)且required(false)）
     let result = build_cli().try_get_matches_from(vec!["deepcli"]);
-    assert!(result.is_err());
+    assert!(result.is_ok());
+
+    // 在交互模式下，query也是可选的
+    let result = build_cli().try_get_matches_from(vec!["deepcli", "-i"]);
+    assert!(result.is_ok());
   }
 }

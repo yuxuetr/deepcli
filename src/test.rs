@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
+  use crate::api::TextContent;
   use crate::cli::{map_model, validate_temperature};
-  use crate::{ApiRequest, ApiResponse, Choice, Message, ResponseFormat};
+  use crate::{ApiRequest, ApiResponse, Choice, Content, Message, ResponseFormat};
   use colored_json::{ColorMode, ColoredFormatter, PrettyFormatter};
   use serde_json::Value;
   use std::error::Error;
@@ -30,12 +31,20 @@ mod tests {
     // Verify messages
     assert_eq!(request.messages.len(), 2);
     assert_eq!(request.messages[0].role, "system");
-    assert_eq!(
-      request.messages[0].content,
-      "You are a helpful assistant. You must output your response in a valid JSON format."
-    );
+    if let Content::Text(text_content) = &request.messages[0].content[0] {
+      assert_eq!(
+        text_content.text,
+        "You are a helpful assistant. You must output your response in a valid JSON format."
+      );
+    } else {
+      panic!("Expected text content");
+    }
     assert_eq!(request.messages[1].role, "user");
-    assert_eq!(request.messages[1].content, "test query");
+    if let Content::Text(text_content) = &request.messages[1].content[0] {
+      assert_eq!(text_content.text, "test query");
+    } else {
+      panic!("Expected text content");
+    }
   }
 
   fn build_api_request(
@@ -58,11 +67,17 @@ mod tests {
       messages: vec![
         Message {
           role: "system".to_string(),
-          content: system_message,
+          content: vec![Content::Text(TextContent {
+            content_type: "text".to_string(),
+            text: system_message,
+          })],
         },
         Message {
           role: "user".to_string(),
-          content: query.to_string(),
+          content: vec![Content::Text(TextContent {
+            content_type: "text".to_string(),
+            text: query.to_string(),
+          })],
         },
       ],
       temperature,
@@ -85,7 +100,10 @@ mod tests {
       choices: vec![Choice {
         message: Message {
           role: "assistant".to_string(),
-          content: r#"{"key": "value"}"#.to_string(),
+          content: vec![Content::Text(TextContent {
+            content_type: "text".to_string(),
+            text: r#"{"key": "value"}"#.to_string(),
+          })],
         },
       }],
     };
@@ -98,23 +116,29 @@ mod tests {
     assert!(result.is_ok());
 
     // Test invalid JSON
-    response.choices[0].message.content = "invalid json".to_string();
+    response.choices[0].message.content = vec![Content::Text(TextContent {
+      content_type: "text".to_string(),
+      text: "invalid json".to_string(),
+    })];
     let result = handle_output(&response, true);
     assert!(result.is_ok());
   }
 
   fn handle_output(response: &ApiResponse, json_output: bool) -> Result<(), Box<dyn Error>> {
     if json_output {
-      if let Ok(content_json) = serde_json::from_str::<Value>(&response.choices[0].message.content)
-      {
-        let formatter = ColoredFormatter::new(PrettyFormatter::new());
-        let colored = formatter.to_colored_json(&content_json, ColorMode::On)?;
-        println!("{}", colored);
-      } else {
-        println!("{}", response.choices[0].message.content);
+      if let Content::Text(text_content) = &response.choices[0].message.content[0] {
+        if let Ok(content_json) = serde_json::from_str::<Value>(&text_content.text) {
+          let formatter = ColoredFormatter::new(PrettyFormatter::new());
+          let colored = formatter.to_colored_json(&content_json, ColorMode::On)?;
+          println!("{}", colored);
+        } else {
+          println!("{}", text_content.text);
+        }
       }
     } else {
-      println!("{}", response.choices[0].message.content);
+      if let Content::Text(text_content) = &response.choices[0].message.content[0] {
+        println!("{}", text_content.text);
+      }
     }
     Ok(())
   }

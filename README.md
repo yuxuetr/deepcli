@@ -10,6 +10,9 @@ DeepCLI is a command-line tool that allows you to interact with DeepSeek's large
 - Limit response length with max tokens parameter
 - Get beautifully formatted, colorized JSON output
 - Simple setup and easy to use
+- File input support (text and image)
+- Chat history preservation
+- Beautiful terminal interface
 
 ## Installation
 
@@ -42,58 +45,71 @@ cargo install deepcli
 Set your DeepSeek API key as an environment variable:
 
 ```bash
-export DEEPSEEK_API_KEY=your_api_key_here
+export DASHSCOPE_API_KEY=your_api_key_here
 ```
 
 Add this to your shell profile (`.bashrc`, `.zshrc`, etc.) to make it permanent.
 
 ## Usage
 
-### Basic Syntax
+### Interactive Mode
+
+Start the interactive mode:
 
 ```bash
-deepcli [OPTIONS] "Your query"
+./target/release/deepcli -i
 ```
 
-### Options
+In interactive mode:
+- Type text directly for conversation
+- Use `\file <file_path>` to analyze a file
+- Use `\clear` to clear current input (without clearing history)
+- Press `Ctrl+C` to exit
 
-| Option          | Short | Description                          | Default |
-| --------------- | ----- | ------------------------------------ | ------- |
-| `--model`       | `-m`  | Model to use (`r1` or `chat`)        | `r1`    |
-| `--temperature` | `-t`  | Sampling temperature (0.0-2.0)       | -       |
-| `--max_tokens`  | `-l`  | Maximum number of tokens to generate | -       |
-| `--json`        | -     | Output response as formatted JSON    | false   |
-
-### Examples
-
-1. Basic query:
+### Single Query Mode
 
 ```bash
-deepcli "Explain Rust's ownership system"
+# Basic query
+./target/release/deepcli "你好，请介绍一下自己"
+
+# Specify model
+./target/release/deepcli -m r1 "请帮我分析这个问题"
+
+# Set parameters
+./target/release/deepcli -t 0.7 -l 1000 "请详细解释这个概念"
+
+# JSON output
+./target/release/deepcli --json "请以JSON格式返回结果"
 ```
 
-2. Use chat model:
+### Command Line Parameters
+
+- `-m, --model <MODEL>`: Choose model (`r1` or `chat`, default: `chat`)
+- `-t, --temperature <TEMPERATURE>`: Set temperature (0.0-2.0)
+- `-l, --max-tokens <MAX_TOKENS>`: Set maximum token count
+- `-i, --interactive`: Start interactive mode
+- `--json`: Output response as formatted JSON
+- `-h, --help`: Display help information
+
+### File Support
+
+#### Text Files
 
 ```bash
-deepcli -m chat "Write a poem about programming"
+# In interactive mode
+\file /path/to/document.txt
+
+# Or analyze file content directly
+./target/release/deepcli "分析这个文件" --file /path/to/document.txt
 ```
 
-3. Control creativity (higher temperature = more creative):
+#### Image Files
+
+Supports common image formats (PNG, JPG, JPEG, etc.):
 
 ```bash
-deepcli -t 1.5 "Create a sci-fi story opening"
-```
-
-4. Limit response length:
-
-```bash
-deepcli -l 150 "Summarize quantum computing"
-```
-
-5. Get JSON output (formatted and colorized):
-
-```bash
-deepcli --json "List Rust's top 5 features in JSON format"
+# In interactive mode
+\file /path/to/image.png
 ```
 
 ## Development Setup
